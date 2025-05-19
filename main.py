@@ -9,11 +9,12 @@ class Game(object):
     """ fenêtre GLFW avec openGL """
 
     def __init__(self):
+        self.position = np.array([0.0, 0.0], dtype=np.float32)
         self.window = self.init_window()
         self.init_context()
         self.init_programs()
         self.init_data()
-
+        self.color = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
     def init_window(self):
         # initialisation de la librairie glfw et du context opengl associé
@@ -71,8 +72,21 @@ class Game(object):
             # choix de la couleur de fond
             GL.glClearColor(np.cos(glfw.get_time()), np.sin(glfw.get_time()), 0.1, 1.0)
             # nettoyage de la fenêtre : fond et profondeur
-            GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
-
+            GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)   
+            self.send_color()
+            # self.send_position()
+            
+            speed = 0.01
+            
+            if glfw.get_key(self.window, glfw.KEY_LEFT) == glfw.PRESS:
+                self.position[0] -= speed
+            if glfw.get_key(self.window, glfw.KEY_RIGHT) == glfw.PRESS:
+                self.position[0] += speed
+            if glfw.get_key(self.window, glfw.KEY_UP) == glfw.PRESS:
+                self.position[1] += speed
+            if glfw.get_key(self.window, glfw.KEY_DOWN) == glfw.PRESS:
+                self.position[1] -= speed
+            
             # dessin du triangle
             GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
             
@@ -81,22 +95,34 @@ class Game(object):
             # gestion des évènements
             glfw.poll_events()
             # print(glfw.get_time()) On a environ 56 FPS donc en gros c'est 60 FPS.
-                
-            # Recup ´ ere l'identifiant du programme courant `
-            prog = GL.glGetIntegerv(GL.GL_CURRENT_PROGRAM)
-            # Recup ´ ere l'identifiant de la variable translation dans le programme courant `
-            loc = GL.glGetUniformLocation(prog, "translation")
-            # Verifie que la variable existe ´
-            if loc == -1 :
-                print("Pas de variable uniforme : translation")
-            # Modifie la variable pour le programme courant
-            GL.glUniform4f(loc, 0.5*np.cos(10*glfw.get_time()), 0.5*np.sin(10*glfw.get_time()), 0, 0)
     
     def key_callback(self, win, key, scancode, action, mods):
         # sortie du programme si appui sur la touche 'echap'
         if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
             glfw.set_window_should_close(win, glfw.TRUE)
-
+        elif action == glfw.PRESS:
+            if key == glfw.KEY_R:
+                self.color = np.array([1.0, 0.0, 0.0], dtype=np.float32)
+            elif key == glfw.KEY_G:
+                self.color = np.array([0.0, 1.0, 0.0], dtype=np.float32)
+            elif key == glfw.KEY_B:
+                self.color = np.array([0.0, 0.0, 1.0], dtype=np.float32)
+                
+    def send_color(self):
+        # Recup ´ ere l'identifiant du programme courant `
+        prog = GL.glGetIntegerv(GL.GL_CURRENT_PROGRAM)
+        # Recup ´ ere l'identifiant de la variable translation dans le programme courant `
+        loc = GL.glGetUniformLocation(prog, "triangleColor")
+        # Verifie que la variable existe ´
+        if loc == -1 :
+            print("Pas de variable uniforme : translation")
+        # Modifie la variable pour le programme courant
+        GL.glUniform3f(loc, *self.color)
+        
+    def send_position(self):
+        loc = GL.glGetUniformLocation(self.program, "translation")
+        GL.glUniform2f(loc, self.position[0], self.position[1])
+        
 def main():
     g = Game()
     g.run()
