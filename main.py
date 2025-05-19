@@ -45,7 +45,7 @@ class Game(object):
         # boucle d'affichage
         while not glfw.window_should_close(self.window):
             # choix de la couleur de fond
-            GL.glClearColor(0.5, 0.6, 0.9, 1.0)
+            GL.glClearColor(0.5, 0, 0, 1.0)
             # nettoyage de la fenêtre : fond et profondeur
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
             # changement de buffer d'affichage pour éviter un effet de scintillement
