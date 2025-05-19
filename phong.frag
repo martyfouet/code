@@ -25,5 +25,4 @@ void main (void)
   vec4 color_final = vec4(1.0,0.5,0.5,0.0);
 
   color = (ambiant+diffuse)*color_final+specular*white;
-
 }

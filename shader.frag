@@ -6,6 +6,7 @@ out vec4 color;
 //Un Fragment Shader minimaliste
 void main (void)
 {
-  //Couleur du fragment
-  color = vec4(1.0,0.0,0.0,1.0);
+  float r=gl_FragCoord.x/800.0;
+  float g=gl_FragCoord.y/800.0;
+  color = vec4(r,g,0.0,0.0);
 }
