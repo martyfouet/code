@@ -15,27 +15,28 @@ def compile_shader(shader_content, shader_type):
         {shader_content}\n{5*"-"}\n{log}\n{25*"-"}')
     return shader_id
 
-def create_program(vertex_source, fragment_source):
-    # creation d'un programme GPU ´
-    vs_id = compile_shader(vertex_source, GL.GL_VERTEX_SHADER)
-    fs_id = compile_shader(fragment_source, GL.GL_FRAGMENT_SHADER)
-    if vs_id and fs_id:
-        program_id = GL.glCreateProgram()
-        GL.glAttachShader(program_id, vs_id)
-        GL.glAttachShader(program_id, fs_id)
-        GL.glLinkProgram(program_id)
-        success = GL.glGetProgramiv(program_id, GL.GL_LINK_STATUS)
-        if not success:
-            log = GL.glGetProgramInfoLog(program_id).decode('ascii')
-            print(f'{25*"-"}\nError linking program:\n{log}\n{25*"-"}')
-        GL.glDeleteShader(vs_id)
-        GL.glDeleteShader(fs_id)
-    return program_id
+def create_program(vertex_src, fragment_src):
+    program = GL.glCreateProgram()
+    
+    vertex_shader = compile_shader(vertex_src, GL.GL_VERTEX_SHADER)
+    fragment_shader = compile_shader(fragment_src, GL.GL_FRAGMENT_SHADER)
+    
+    GL.glAttachShader(program, vertex_shader)
+    GL.glAttachShader(program, fragment_shader)
+    GL.glLinkProgram(program)
 
-def create_program_from_file(vs_file, fs_file):
-    # creation d'un programme GPU ´ a partir de fichiers `
-    vs_content = open(vs_file, 'r').read() if os.path.exists(vs_file)\
-        else print(f'{25*"-"}\nError reading file:\n{vs_file}\n{25*"-"}')
-    fs_content = open(fs_file, 'r').read() if os.path.exists(fs_file)\
-        else print(f'{25*"-"}\nError reading file:\n{fs_file}\n{25*"-"}')
-    return create_program(vs_content, fs_content)
+    # Vérifie le lien
+    link_status = GL.glGetProgramiv(program, GL.GL_LINK_STATUS)
+    if not link_status:
+        log = GL.glGetProgramInfoLog(program)
+        raise RuntimeError(f"Erreur de linkage du programme:\n{log.decode()}")
+    
+    return program
+
+def create_program_from_file(vertex_path, fragment_path):
+    with open(vertex_path) as f:
+        vertex_src = f.read()
+    with open(fragment_path) as f:
+        fragment_src = f.read()
+    
+    return create_program(vertex_src, fragment_src)

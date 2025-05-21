@@ -3,6 +3,7 @@
 import OpenGL.GL as GL
 import glfw
 import numpy as np
+import pyrr
 from GLprogram import compile_shader, create_program, create_program_from_file
 
 class Game(object):
@@ -15,6 +16,7 @@ class Game(object):
         self.init_programs()
         self.init_data()
         self.color = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        self.rotation_matrix = pyrr.matrix44.create_identity(dtype=np.float32)
 
     def init_window(self):
         # initialisation de la librairie glfw et du context opengl associé
@@ -39,8 +41,8 @@ class Game(object):
 
     def init_programs(self):
         # Création du programme GPU à partir des fichiers shader.vert et shader.frag
-        prog = create_program_from_file("shader.vert", "shader.frag")
-        GL.glUseProgram(prog)
+        self.program = create_program_from_file("shader.vert", "shader.frag")
+        GL.glUseProgram(self.program)
         
     def init_data(self):
         # création d'un tableau de sommets
@@ -74,9 +76,26 @@ class Game(object):
             # nettoyage de la fenêtre : fond et profondeur
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)   
             self.send_color()
-            # self.send_position()
+            self.send_position()
             
             speed = 0.01
+            rotation_speed = 0.02
+            
+            if glfw.get_key(self.window, glfw.KEY_I) == glfw.PRESS:
+                rot = pyrr.matrix44.create_from_x_rotation(rotation_speed, dtype=np.float32)
+                self.rotation_matrix = pyrr.matrix44.multiply(rot, self.rotation_matrix)
+
+            if glfw.get_key(self.window, glfw.KEY_K) == glfw.PRESS:
+                rot = pyrr.matrix44.create_from_x_rotation(-rotation_speed, dtype=np.float32)
+                self.rotation_matrix = pyrr.matrix44.multiply(rot, self.rotation_matrix)
+
+            if glfw.get_key(self.window, glfw.KEY_J) == glfw.PRESS:
+                rot = pyrr.matrix44.create_from_y_rotation(rotation_speed, dtype=np.float32)
+                self.rotation_matrix = pyrr.matrix44.multiply(rot, self.rotation_matrix)
+
+            if glfw.get_key(self.window, glfw.KEY_L) == glfw.PRESS:
+                rot = pyrr.matrix44.create_from_y_rotation(-rotation_speed, dtype=np.float32)
+                self.rotation_matrix = pyrr.matrix44.multiply(rot, self.rotation_matrix)
             
             if glfw.get_key(self.window, glfw.KEY_LEFT) == glfw.PRESS:
                 self.position[0] -= speed
@@ -86,6 +105,8 @@ class Game(object):
                 self.position[1] += speed
             if glfw.get_key(self.window, glfw.KEY_DOWN) == glfw.PRESS:
                 self.position[1] -= speed
+            
+            self.send_rotation()
             
             # dessin du triangle
             GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
@@ -110,14 +131,20 @@ class Game(object):
                 
     def send_color(self):
         # Recup ´ ere l'identifiant du programme courant `
-        prog = GL.glGetIntegerv(GL.GL_CURRENT_PROGRAM)
+        # prog = GL.glGetIntegerv(GL.GL_CURRENT_PROGRAM)
         # Recup ´ ere l'identifiant de la variable translation dans le programme courant `
-        loc = GL.glGetUniformLocation(prog, "triangleColor")
+        loc = GL.glGetUniformLocation(self.program, "triangleColor")
         # Verifie que la variable existe ´
         if loc == -1 :
             print("Pas de variable uniforme : translation")
         # Modifie la variable pour le programme courant
         GL.glUniform3f(loc, *self.color)
+        
+    def send_rotation(self):
+        loc = GL.glGetUniformLocation(self.program, "rotation")
+        if loc == -1:
+            print("Uniforme rotation non trouvé")
+        GL.glUniformMatrix4fv(loc, 1, GL.GL_FALSE, self.rotation_matrix)
         
     def send_position(self):
         loc = GL.glGetUniformLocation(self.program, "translation")
