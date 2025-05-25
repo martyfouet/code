@@ -1,11 +1,13 @@
 #version 330 core
 
-in vec3 coordonnee_3d; // Reçoit la position originale du sommet depuis le vertex shader
+in vec3 vcolor;
+in vec2 vtex;
 
-out vec4 FragColor;
+uniform sampler2D texture;
 
-void main()
-{
-    // Utilisation des composantes x, y, z comme R, G, B
-    FragColor = vec4(coordonnee_3d.x, coordonnee_3d.y, coordonnee_3d.z, 1.0);
+out vec4 fragColor;
+
+void main() {
+    vec4 texColor = texture(texture, vtex); // Utiliser 'texture' (fonction) au lieu de 'texture2D'
+    fragColor = texColor * vec4(vcolor, 1.0); // Multiplier la couleur de texture avec la couleur vertex
 }

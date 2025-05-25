@@ -2,8 +2,10 @@ import OpenGL.GL as GL
 import glfw
 import numpy as np
 import pyrr
+import ctypes
+import os
+from PIL import Image
 from GLprogram import create_program_from_file
-from ctypes import c_void_p, sizeof, c_float
 
 class Game(object):
     def __init__(self):
@@ -13,9 +15,7 @@ class Game(object):
         self.init_programs()
         self.init_data()
         self.rotation_matrix = pyrr.matrix44.create_identity(dtype=np.float32)
-        self.projection = pyrr.matrix44.create_perspective_projection(
-            fovy=50.0, aspect=1.0, near=0.5, far=10.0, dtype=np.float32
-        )
+        self.projection = pyrr.matrix44.create_perspective_projection(50.0, 1.0, 0.5, 10.0, dtype=np.float32)
         self.z = -3.0
 
     def init_window(self):
@@ -32,107 +32,96 @@ class Game(object):
     def init_context(self):
         glfw.make_context_current(self.window)
         glfw.swap_interval(1)
-        GL.glDisable(GL.GL_DEPTH_TEST)
+        GL.glEnable(GL.GL_DEPTH_TEST)
 
     def init_programs(self):
         self.program = create_program_from_file("shaders/shader.vert", "shaders/shader.frag")
         GL.glUseProgram(self.program)
 
+    def load_texture(self, filename):
+        if not os.path.exists(filename):
+            raise FileNotFoundError(f"Texture not found: {filename}")
+        im = Image.open(filename).transpose(Image.Transpose.FLIP_TOP_BOTTOM).convert('RGBA')
+        texture_id = GL.glGenTextures(1)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, texture_id)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_REPEAT)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, im.width, im.height, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, im.tobytes())
+        return texture_id
+
     def init_data(self):
-        sommets = np.array([
-            0.0, 0.0, 0.0,  0.0, 0.0, 0.0,  # rouge
-            1.0, 0.0, 0.0,  0.0, 0.0, 0.0,  # vert
-            0.0, 1.0, 0.0,  0.0, 0.0, 0.0,  # bleu
-            0.0, 0.0, 1.0,  0.0, 0.0, 0.0   # jaune
+        # Position (3), Normale (3), Couleur (3), UV (2) = 11 floats
+        data = np.array([
+            # pos         norm        color       uv
+            0.0, 0.0, 0.0, 0, 0, 1,    1, 0, 0,     0, 0,
+            1.0, 0.0, 0.0, 0, 0, 1,    0, 1, 0,     1, 0,
+            0.0, 1.0, 0.0, 0, 0, 1,    0, 0, 1,     0, 1,
+            0.0, 0.0, 1.0, 0, 0, 1,    1, 1, 0,     1, 1
         ], dtype=np.float32)
 
-        index = np.array([
-            0, 1, 2,
-            0, 1, 3
-        ], dtype=np.uint32)
+        indices = np.array([0, 1, 2, 0, 1, 3], dtype=np.uint32)
 
         self.vao = GL.glGenVertexArrays(1)
         GL.glBindVertexArray(self.vao)
 
         self.vbo = GL.glGenBuffers(1)
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.vbo)
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, sommets.nbytes, sommets, GL.GL_STATIC_DRAW)
+        GL.glBufferData(GL.GL_ARRAY_BUFFER, data.nbytes, data, GL.GL_STATIC_DRAW)
 
         self.ebo = GL.glGenBuffers(1)
         GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.ebo)
-        GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, index.nbytes, index, GL.GL_STATIC_DRAW)
+        GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices, GL.GL_STATIC_DRAW)
 
+        stride = 11 * ctypes.sizeof(ctypes.c_float)
+        offset = 0
         GL.glEnableVertexAttribArray(0)
-        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 6 * sizeof(c_float()), c_void_p(0))
+        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, stride, ctypes.c_void_p(offset))
 
+        offset += 3 * ctypes.sizeof(ctypes.c_float)
         GL.glEnableVertexAttribArray(1)
-        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, 6 * sizeof(c_float()), c_void_p(3 * sizeof(c_float())))
-        
-        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 2*3*sizeof(c_float()), None)
+        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, stride, ctypes.c_void_p(offset))
+
+        offset += 3 * ctypes.sizeof(ctypes.c_float)
+        GL.glEnableVertexAttribArray(2)
+        GL.glVertexAttribPointer(2, 3, GL.GL_FLOAT, GL.GL_FALSE, stride, ctypes.c_void_p(offset))
+
+        offset += 3 * ctypes.sizeof(ctypes.c_float)
+        GL.glEnableVertexAttribArray(3)
+        GL.glVertexAttribPointer(3, 2, GL.GL_FLOAT, GL.GL_FALSE, stride, ctypes.c_void_p(offset))
+
+        self.texture = self.load_texture("textures/brique.png")
+        GL.glUseProgram(self.program)
+        GL.glUniform1i(GL.glGetUniformLocation(self.program, "texture"), 0)
 
         GL.glBindVertexArray(0)
 
     def run(self):
-        speed = 0.1
-        projection_speed = 0.1
         last_time = glfw.get_time()
-
         while not glfw.window_should_close(self.window):
             current_time = glfw.get_time()
-            delta_time = current_time - last_time
+            delta = current_time - last_time
             last_time = current_time
-            rotation_speed = 1.5 * delta_time
 
-            GL.glClearColor(0.2, 0.2, 0.2, 1.0)
+            GL.glClearColor(0.1, 0.1, 0.1, 1.0)
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
-            if glfw.get_key(self.window, glfw.KEY_K) == glfw.PRESS:
-                self.rotation_matrix = pyrr.matrix44.multiply(
-                    pyrr.matrix44.create_from_x_rotation(rotation_speed), self.rotation_matrix
-                )
-            if glfw.get_key(self.window, glfw.KEY_I) == glfw.PRESS:
-                self.rotation_matrix = pyrr.matrix44.multiply(
-                    pyrr.matrix44.create_from_x_rotation(-rotation_speed), self.rotation_matrix
-                )
-            if glfw.get_key(self.window, glfw.KEY_L) == glfw.PRESS:
-                self.rotation_matrix = pyrr.matrix44.multiply(
-                    pyrr.matrix44.create_from_y_rotation(rotation_speed), self.rotation_matrix
-                )
-            if glfw.get_key(self.window, glfw.KEY_J) == glfw.PRESS:
-                self.rotation_matrix = pyrr.matrix44.multiply(
-                    pyrr.matrix44.create_from_y_rotation(-rotation_speed), self.rotation_matrix
-                )
+            rotation = pyrr.matrix44.create_from_y_rotation(delta)
+            self.rotation_matrix = pyrr.matrix44.multiply(rotation, self.rotation_matrix)
 
-            if glfw.get_key(self.window, glfw.KEY_LEFT) == glfw.PRESS:
-                self.position[0] -= speed
-            if glfw.get_key(self.window, glfw.KEY_RIGHT) == glfw.PRESS:
-                self.position[0] += speed
-            if glfw.get_key(self.window, glfw.KEY_UP) == glfw.PRESS:
-                self.position[1] += speed
-            if glfw.get_key(self.window, glfw.KEY_DOWN) == glfw.PRESS:
-                self.position[1] -= speed
-
-            if glfw.get_key(self.window, glfw.KEY_Y) == glfw.PRESS:
-                self.z += projection_speed
-            if glfw.get_key(self.window, glfw.KEY_H) == glfw.PRESS:
-                self.z -= projection_speed
-
-            translation = pyrr.matrix44.create_from_translation(
-                [self.position[0], self.position[1], self.z], dtype=np.float32
-            )
+            translation = pyrr.matrix44.create_from_translation([*self.position, self.z], dtype=np.float32)
             model = pyrr.matrix44.multiply(translation, self.rotation_matrix)
 
-            view = pyrr.matrix44.create_look_at(
-                eye=[0.0, 0.0, 3.0],
-                target=[0.0, 0.0, 0.0],
-                up=[0.0, 1.0, 0.0],
-                dtype=np.float32
-            )
+            view = pyrr.matrix44.create_look_at([0, 0, 3], [0, 0, 0], [0, 1, 0], dtype=np.float32)
 
             GL.glUseProgram(self.program)
             GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.program, "model"), 1, GL.GL_FALSE, model)
             GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.program, "view"), 1, GL.GL_FALSE, view)
             GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.program, "projection"), 1, GL.GL_FALSE, self.projection)
+
+            GL.glActiveTexture(GL.GL_TEXTURE0)
+            GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture)
 
             GL.glBindVertexArray(self.vao)
             GL.glDrawElements(GL.GL_TRIANGLES, 6, GL.GL_UNSIGNED_INT, None)
@@ -145,10 +134,15 @@ class Game(object):
         if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
             glfw.set_window_should_close(win, glfw.TRUE)
 
+
 def main():
-    g = Game()
-    g.run()
+    game = Game()
+    game.run()
     glfw.terminate()
+
 
 if __name__ == '__main__':
     main()
+
+#cd C:\Users\dmonn\Downloads\code_tutoriel\code
+#python main.py
