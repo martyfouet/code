@@ -32,18 +32,18 @@ class Game(object):
     def init_context(self):
         glfw.make_context_current(self.window)
         glfw.swap_interval(1)
-        GL.glEnable(GL.GL_DEPTH_TEST)
+        GL.glDisable(GL.GL_DEPTH_TEST)
 
     def init_programs(self):
-        self.program = create_program_from_file("shader.vert", "shader.frag")
+        self.program = create_program_from_file("shaders/shader.vert", "shaders/shader.frag")
         GL.glUseProgram(self.program)
 
     def init_data(self):
         sommets = np.array([
-            0.0, 0.0, 0.0,  1.0, 0.0, 0.0,  # rouge
-            1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  # vert
-            0.0, 1.0, 0.0,  0.0, 0.0, 1.0,  # bleu
-            0.0, 0.0, 1.0,  1.0, 1.0, 0.0   # jaune
+            0.0, 0.0, 0.0,  0.0, 0.0, 0.0,  # rouge
+            1.0, 0.0, 0.0,  0.0, 0.0, 0.0,  # vert
+            0.0, 1.0, 0.0,  0.0, 0.0, 0.0,  # bleu
+            0.0, 0.0, 1.0,  0.0, 0.0, 0.0   # jaune
         ], dtype=np.float32)
 
         index = np.array([
@@ -67,6 +67,8 @@ class Game(object):
 
         GL.glEnableVertexAttribArray(1)
         GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, GL.GL_FALSE, 6 * sizeof(c_float()), c_void_p(3 * sizeof(c_float())))
+        
+        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 2*3*sizeof(c_float()), None)
 
         GL.glBindVertexArray(0)
 
