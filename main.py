@@ -26,6 +26,7 @@ class Game(object):
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
         glfw.window_hint(glfw.RESIZABLE, False)
         window = glfw.create_window(800, 800, 'OpenGL', None, None)
+        glfw.set_input_mode(window, glfw.STICKY_KEYS, glfw.TRUE)
         glfw.set_key_callback(window, self.key_callback)
         return window
 
@@ -52,9 +53,7 @@ class Game(object):
         return texture_id
 
     def init_data(self):
-        # Position (3), Normale (3), Couleur (3), UV (2) = 11 floats
         data = np.array([
-            # pos         norm        color       uv
             0.0, 0.0, 0.0, 0, 0, 1,    1, 0, 0,     0, 0,
             1.0, 0.0, 0.0, 0, 0, 1,    0, 1, 0,     1, 0,
             0.0, 1.0, 0.0, 0, 0, 1,    0, 0, 1,     0, 1,
@@ -104,11 +103,34 @@ class Game(object):
             delta = current_time - last_time
             last_time = current_time
 
+            # Contrôles clavier
+            if glfw.get_key(self.window, glfw.KEY_LEFT) == glfw.PRESS:
+                self.position[0] -= 1.0 * delta
+            if glfw.get_key(self.window, glfw.KEY_RIGHT) == glfw.PRESS:
+                self.position[0] += 1.0 * delta
+            if glfw.get_key(self.window, glfw.KEY_UP) == glfw.PRESS:
+                self.position[1] += 1.0 * delta
+            if glfw.get_key(self.window, glfw.KEY_DOWN) == glfw.PRESS:
+                self.position[1] -= 1.0 * delta
+            if glfw.get_key(self.window, glfw.KEY_Y) == glfw.PRESS:
+                self.z += 1.0 * delta
+            if glfw.get_key(self.window, glfw.KEY_H) == glfw.PRESS:
+                self.z -= 1.0 * delta
+            if glfw.get_key(self.window, glfw.KEY_K) == glfw.PRESS:
+                rot_x = pyrr.matrix44.create_from_x_rotation(2 * delta)
+                self.rotation_matrix = pyrr.matrix44.multiply(rot_x, self.rotation_matrix)
+            if glfw.get_key(self.window, glfw.KEY_I) == glfw.PRESS:
+                rot_x = pyrr.matrix44.create_from_x_rotation(-2 * delta)
+                self.rotation_matrix = pyrr.matrix44.multiply(rot_x, self.rotation_matrix)
+            if glfw.get_key(self.window, glfw.KEY_L) == glfw.PRESS:
+                rot_y = pyrr.matrix44.create_from_y_rotation(2 * delta)
+                self.rotation_matrix = pyrr.matrix44.multiply(rot_y, self.rotation_matrix)
+            if glfw.get_key(self.window, glfw.KEY_J) == glfw.PRESS:
+                rot_y = pyrr.matrix44.create_from_y_rotation(-2 * delta)
+                self.rotation_matrix = pyrr.matrix44.multiply(rot_y, self.rotation_matrix)
+
             GL.glClearColor(0.1, 0.1, 0.1, 1.0)
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
-
-            rotation = pyrr.matrix44.create_from_y_rotation(delta)
-            self.rotation_matrix = pyrr.matrix44.multiply(rotation, self.rotation_matrix)
 
             translation = pyrr.matrix44.create_from_translation([*self.position, self.z], dtype=np.float32)
             model = pyrr.matrix44.multiply(translation, self.rotation_matrix)
@@ -134,15 +156,14 @@ class Game(object):
         if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
             glfw.set_window_should_close(win, glfw.TRUE)
 
-
 def main():
     game = Game()
     game.run()
     glfw.terminate()
 
-
 if __name__ == '__main__':
     main()
+
 
 #cd C:\Users\dmonn\Downloads\code_tutoriel\code
 #python main.py
