@@ -17,6 +17,12 @@ class Game(object):
         self.rotation_matrix = pyrr.matrix44.create_identity(dtype=np.float32)
         self.projection = pyrr.matrix44.create_perspective_projection(50.0, 1.0, 0.5, 10.0, dtype=np.float32)
         self.z = -3.0
+        
+        # Liste des objets à afficher : (position, rotation_angle)
+        self.objects = [
+            {"pos": np.array([0.0, 0.0, self.z], dtype=np.float32), "rot": 0.0},
+            {"pos": np.array([1.5, 0.0, self.z], dtype=np.float32), "rot": 0.0}
+        ]
 
     def init_window(self):
         glfw.init()
@@ -132,19 +138,29 @@ class Game(object):
             GL.glClearColor(0.1, 0.1, 0.1, 1.0)
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
-            translation = pyrr.matrix44.create_from_translation([*self.position, self.z], dtype=np.float32)
-            model = pyrr.matrix44.multiply(translation, self.rotation_matrix)
-
             view = pyrr.matrix44.create_look_at([0, 0, 3], [0, 0, 0], [0, 1, 0], dtype=np.float32)
 
             GL.glUseProgram(self.program)
-            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.program, "model"), 1, GL.GL_FALSE, model)
             GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.program, "view"), 1, GL.GL_FALSE, view)
             GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.program, "projection"), 1, GL.GL_FALSE, self.projection)
 
             GL.glActiveTexture(GL.GL_TEXTURE0)
             GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture)
 
+            # Objet 1 : position + rotation
+            translation1 = pyrr.matrix44.create_from_translation([*self.position, self.z], dtype=np.float32)
+            model1 = pyrr.matrix44.multiply(translation1, self.rotation_matrix)
+
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.program, "model"), 1, GL.GL_FALSE, model1)
+            GL.glBindVertexArray(self.vao)
+            GL.glDrawElements(GL.GL_TRIANGLES, 6, GL.GL_UNSIGNED_INT, None)
+            GL.glBindVertexArray(0)
+
+            # Objet 2 : suit l'objet 1 avec un offset local
+            offset_translation = pyrr.matrix44.create_from_translation([1.5, 0.0, 0.0], dtype=np.float32)
+            model2 = pyrr.matrix44.multiply(model1, offset_translation)
+
+            GL.glUniformMatrix4fv(GL.glGetUniformLocation(self.program, "model"), 1, GL.GL_FALSE, model2)
             GL.glBindVertexArray(self.vao)
             GL.glDrawElements(GL.GL_TRIANGLES, 6, GL.GL_UNSIGNED_INT, None)
             GL.glBindVertexArray(0)
@@ -153,8 +169,17 @@ class Game(object):
             glfw.poll_events()
 
     def key_callback(self, win, key, scancode, action, mods):
-        if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
-            glfw.set_window_should_close(win, glfw.TRUE)
+        if action == glfw.PRESS or action == glfw.REPEAT:
+            if key == glfw.KEY_ESCAPE:
+                glfw.set_window_should_close(win, glfw.TRUE)
+            elif key == glfw.KEY_LEFT:
+                self.position[0] -= 0.1
+            elif key == glfw.KEY_RIGHT:
+                self.position[0] += 0.1
+            elif key == glfw.KEY_UP:
+                self.position[1] += 0.1
+            elif key == glfw.KEY_DOWN:
+                self.position[1] -= 0.1
 
 def main():
     game = Game()
